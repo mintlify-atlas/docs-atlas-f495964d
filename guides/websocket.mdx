@@ -1,0 +1,40 @@
+---
+title: "Enable WebSocket support with ASGI and Uvicorn"
+description: "Enable async WebSocket support in your generated project by selecting the use_async option, which configures ASGI with Uvicorn and Gunicorn."
+---
+
+Cookiecutter Django supports WebSockets through its `use_async` option. When you select `use_async=y` during project generation, the project is configured to run under ASGI using [Uvicorn](https://www.uvicorn.org/) managed by [Gunicorn](https://gunicorn.org/), enabling full bidirectional WebSocket communication alongside your standard HTTP views.
+
+## Enabling WebSocket support
+
+Set `use_async` to `y` when generating your project:
+
+```bash
+uvx cookiecutter https://github.com/cookiecutter/cookiecutter-django
+# When prompted:
+# use_async [n]: y
+```
+
+This switches the server configuration from WSGI to ASGI and adds Uvicorn as the worker class for Gunicorn, so your project can handle WebSocket connections out of the box.
+
+## Usage example
+
+Once your project is running, you can open a WebSocket connection from the browser console or any JavaScript client:
+
+```javascript
+ws = new WebSocket('ws://localhost:8000/') // use 'wss://<mydomain.com>/' in production
+// WebSocket {url: "ws://localhost:8000/", readyState: 0, bufferedAmount: 0, onopen: null, onerror: null, …}
+
+ws.onmessage = event => console.log(event.data)
+// event => console.log(event.data)
+
+ws.send("ping")
+// undefined
+// pong!
+```
+
+## Reverse proxy configuration
+
+<Note>
+  If you are not using Traefik as your reverse proxy, you will need to configure WebSocket proxying manually. Nginx requires specific directives to upgrade HTTP connections to WebSocket. See the [Nginx WebSocket proxying guide](https://www.nginx.com/blog/websocket-nginx/) for configuration examples.
+</Note>

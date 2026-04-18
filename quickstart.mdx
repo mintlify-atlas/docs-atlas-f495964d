@@ -1,80 +1,175 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quickstart: generate a Django project in minutes"
+description: "Go from zero to a running Django project in minutes — generate a fully configured, production-ready codebase with a single command."
 ---
 
-## Get started in three steps
+Cookiecutter Django scaffolds a complete Django project from a template by asking you a series of questions. The result is a working codebase with your chosen database version, cloud provider, email service, and other integrations already wired up.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have the following installed:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- **uv** (Python package manager) — [install uv](https://docs.astral.sh/uv/getting-started/installation/)
+- **Python 3.14** — installed automatically by uv if needed
+- **PostgreSQL** — a running instance for running migrations locally
 
-### Step 2: Deploy your changes
+## Generate your project
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Steps>
+  <Step title="Install Cookiecutter">
+    Use `uv tool install` to make the `cookiecutter` command available globally:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash
+    uv tool install "cookiecutter>=1.7.0"
+    ```
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Run Cookiecutter against this repo">
+    Point Cookiecutter at the cookiecutter-django GitHub repository:
 
-### Step 3: Go live
+    ```bash
+    uvx cookiecutter https://github.com/cookiecutter/cookiecutter-django
+    ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    You will be prompted to answer a series of questions that configure your project. See the [project generation options reference](/project-generation-options) for a full description of every prompt.
+  </Step>
+
+  <Step title="Answer the prompts">
+    Provide values for each prompt. Press Enter to accept the default shown in brackets. Here is an example session generating a project called "Reddit Clone":
+
+    ```text
+    Cloning into 'cookiecutter-django'...
+    remote: Counting objects: 550, done.
+    remote: Compressing objects: 100% (310/310), done.
+    remote: Total 550 (delta 283), reused 479 (delta 222)
+    Receiving objects: 100% (550/550), 127.66 KiB | 58 KiB/s, done.
+    Resolving deltas: 100% (283/283), done.
+    project_name [My Awesome Project]: Reddit Clone
+    project_slug [reddit_clone]: reddit
+    description [Behold My Awesome Project!]: A reddit clone.
+    author_name [Daniel Roy Greenfeld]: Daniel Greenfeld
+    domain_name [example.com]: myreddit.com
+    email [daniel-greenfeld@example.com]: pydanny@gmail.com
+    version [0.1.0]: 0.0.1
+    Select open_source_license:
+    1 - MIT
+    2 - BSD
+    3 - GPLv3
+    4 - Apache Software License 2.0
+    5 - Not open source
+    Choose from 1, 2, 3, 4, 5 [1]: 1
+    Select username_type:
+    1 - username
+    2 - email
+    Choose from 1, 2 [1]: 1
+    timezone [UTC]: America/Los_Angeles
+    windows [n]: n
+    Select an editor to use. The choices are:
+    1 - None
+    2 - PyCharm
+    3 - VS Code
+    Choose from 1, 2, 3 [1]: 1
+    use_docker [n]: n
+    Select postgresql_version:
+    1 - 18
+    2 - 17
+    3 - 16
+    4 - 15
+    5 - 14
+    Choose from 1, 2, 3, 4 [1]: 1
+    Select cloud_provider:
+    1 - AWS
+    2 - GCP
+    3 - None
+    Choose from 1, 2, 3 [1]: 1
+    Select mail_service:
+    1 - Mailgun
+    2 - Amazon SES
+    3 - Mailjet
+    4 - Mandrill
+    5 - Postmark
+    6 - Sendgrid
+    7 - Brevo (formerly SendinBlue)
+    8 - SparkPost
+    9 - Other SMTP
+    Choose from 1, 2, 3, 4, 5, 6, 7, 8, 9 [1]: 1
+    Select rest_api [None]:
+    1 - None
+    2 - DRF
+    3 - Django Ninja
+    Choose from 1, 2, 3 [1]: 1
+    use_async [n]: n
+    Select frontend_pipeline:
+    1 - None
+    2 - Django Compressor
+    3 - Gulp
+    4 - Webpack
+    Choose from 1, 2, 3, 4 [1]: 1
+    use_celery [n]: y
+    use_mailpit [n]: n
+    use_sentry [n]: y
+    use_whitenoise [n]: n
+    use_heroku [n]: y
+    Select ci_tool:
+    1 - None
+    2 - Travis
+    3 - Gitlab
+    4 - Github
+    Choose from 1, 2, 3, 4 [1]: 4
+    keep_local_envs_in_vcs [y]: y
+    debug [n]: n
+    ```
+
+    <Warning>
+      After generation, replace placeholder values like "Daniel Greenfeld" and "pydanny" with your own information before committing.
+    </Warning>
+  </Step>
+
+  <Step title="Enter the generated directory">
+    The generated project directory is named after the `project_slug` you provided. Enter it and look around:
+
+    ```bash
+    cd reddit/
+    ls
+    ```
+  </Step>
+
+  <Step title="Run database migrations">
+    Apply the initial Django migrations against your local PostgreSQL database:
+
+    ```bash
+    uv run python manage.py migrate
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    Start the Django development server:
+
+    ```bash
+    uv run python manage.py runserver 0.0.0.0:8000
+    ```
+
+    Your project is now running at `http://localhost:8000`.
+  </Step>
+</Steps>
+
+## Review the generated README
+
+The generated project includes its own `README` with instructions specific to your chosen configuration — including environment variable setup, local development commands, and deployment steps. Read it carefully before proceeding.
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Developing locally" icon="laptop-code" href="/local-development/developing-locally">
+    Set up your full local development environment without Docker.
+  </Card>
+  <Card title="Developing locally with Docker" icon="docker" href="/local-development/developing-locally-docker">
+    Run the full stack locally using Docker Compose.
+  </Card>
+  <Card title="Project generation options" icon="sliders" href="/project-generation-options">
+    Understand every prompt and what it controls in the generated project.
+  </Card>
+  <Card title="Introduction" icon="book-open" href="/introduction">
+    Learn about Cookiecutter Django's features, integrations, and constraints.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

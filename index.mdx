@@ -1,97 +1,101 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Cookiecutter Django: Production-Ready Django Projects"
+description: "Cookiecutter Django generates production-ready Django projects from a single command, with Docker, Celery, cloud storage, CI/CD, and email all pre-configured."
 ---
 
-## Setting up
+Cookiecutter Django is a battle-tested project template that generates fully configured, production-ready Django applications in minutes. Answer a few prompts and get a project with split settings, Docker support, authentication, email, cloud storage, and CI/CD — all wired together and ready to go.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Generate your first Django project in under 5 minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Project Options" icon="sliders" href="/project-generation-options">
+    Explore every template variable and configuration choice
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Local Development" icon="laptop-code" href="/local-development/developing-locally">
+    Set up your development environment without Docker
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Docker Development" icon="docker" href="/local-development/developing-locally-docker">
+    Run the full stack locally with Docker Compose
   </Card>
-</Columns>
+  <Card title="Deploy with Docker" icon="server" href="/deployment/deployment-with-docker">
+    Ship to production using Docker Compose and Traefik
+  </Card>
+  <Card title="Deploy to Heroku" icon="cloud" href="/deployment/deployment-on-heroku">
+    One-command deployment to Heroku
+  </Card>
+</CardGroup>
 
-## Create beautiful pages
+## What you get out of the box
 
-Everything you need to create world-class documentation.
+Every generated project includes a curated set of production essentials — configured, tested, and ready to customize.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Split settings" icon="gear">
+    Separate `base`, `local`, `test`, and `production` settings via django-environ and 12-Factor App principles
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Custom user model" icon="user">
+    A ready-to-extend user model with django-allauth supporting username or email-based authentication
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Docker Compose" icon="cubes">
+    Full Docker Compose stacks for local development and production, including Traefik with automatic HTTPS
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Cloud storage" icon="database">
+    Optional media and static file hosting on AWS S3, Google Cloud Storage, or Azure Blob Storage
   </Card>
-</Columns>
+  <Card title="Task queues" icon="list-check">
+    Optional Celery worker and beat scheduler with Flower dashboard for monitoring
+  </Card>
+  <Card title="Email delivery" icon="envelope">
+    Pluggable transactional email via django-anymail supporting Mailgun, SendGrid, SES, Postmark, and more
+  </Card>
+</CardGroup>
 
-## Need inspiration?
+## Getting started
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Steps>
+  <Step title="Install Cookiecutter">
+    Install Cookiecutter using `uv` (or pip):
+
+    ```bash
+    uv tool install "cookiecutter>=1.7.0"
+    ```
+  </Step>
+  <Step title="Generate your project">
+    Run Cookiecutter against this repository and answer the prompts:
+
+    ```bash
+    uvx cookiecutter https://github.com/cookiecutter/cookiecutter-django
+    ```
+  </Step>
+  <Step title="Set up your environment">
+    Enter your project directory, install dependencies, and run migrations:
+
+    ```bash
+    cd <your_project_slug>
+    uv sync
+    uv run python manage.py migrate
+    uv run python manage.py runserver
+    ```
+  </Step>
+  <Step title="Explore and customize">
+    Your project is running at [http://localhost:8000](http://localhost:8000). Check out the [project generation options](/project-generation-options) to understand every choice you made, or dive into the [local development guide](/local-development/developing-locally) for a full walkthrough.
+  </Step>
+</Steps>
+
+## Optional integrations
+
+Enable any of these features during project generation:
+
+| Integration | Option | Description |
+|---|---|---|
+| Celery | `use_celery=y` | Background task processing with Redis broker |
+| Sentry | `use_sentry=y` | Error tracking and performance monitoring |
+| Mailpit | `use_mailpit=y` | Local email testing without a real mail server |
+| Whitenoise | `use_whitenoise=y` | Serve static files directly from Django |
+| Heroku | `use_heroku=y` | `Procfile` and Heroku-ready configuration |
+| Async/WebSockets | `use_async=y` | ASGI setup with Uvicorn + Gunicorn |
+
+<Note>
+  All optional integrations can only be enabled at project generation time. Plan your choices before running `cookiecutter`.
+</Note>

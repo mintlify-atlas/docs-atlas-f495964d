@@ -1,0 +1,61 @@
+---
+title: "Testing your Cookiecutter Django project"
+description: "Run your generated project's test suite with pytest, target individual apps, and measure code coverage to keep your Django application well-tested."
+---
+
+Cookiecutter Django encourages a test-first approach: write your tests immediately after documenting the feature you're building, before writing any implementation code. The project uses [pytest](https://docs.pytest.org/en/latest/) as its testing framework, and ships with a working test suite for the `users` app so you have a working example to build from.
+
+## Running tests with pytest
+
+After setting up your [local development environment](/local-development/developing-locally), run the full test suite with:
+
+```bash
+pytest
+```
+
+You'll see output covering the pre-configured `users` app tests. To target a specific app rather than running the entire suite, pass the path to the app:
+
+```bash
+pytest <path-to-app-in-project/app>
+```
+
+If you set up your project to [develop locally with Docker](/local-development/developing-locally-docker), run pytest inside the Django container instead:
+
+```bash
+docker compose -f docker-compose.local.yml run --rm django pytest
+```
+
+Targeting a specific app in Docker follows the same pattern — just append the path after `pytest`.
+
+## Code coverage
+
+Aim for the highest code coverage you can achieve. To run pytest with coverage measurement:
+
+```bash
+coverage run -m pytest
+```
+
+Once the tests finish, view the coverage report:
+
+```bash
+coverage report
+```
+
+If you're running the project with Docker, use these equivalents:
+
+```bash
+docker compose -f docker-compose.local.yml run --rm django coverage run -m pytest
+docker compose -f docker-compose.local.yml run --rm django coverage report
+```
+
+<Note>
+  The `pytest.ini` file at the root of your project lets you [customise pytest behaviour](https://docs.pytest.org/en/latest/customize.html) — test discovery paths, markers, output format, and more. Coverage configuration lives in `pyproject.toml`. See the [coverage docs](https://coverage.readthedocs.io/en/latest/config.html) for all available options.
+</Note>
+
+You can also run tests using Django's built-in test runner:
+
+```bash
+python manage.py test
+```
+
+On a fresh install with no `unittest`-based tests written yet, this will report that no tests were found.

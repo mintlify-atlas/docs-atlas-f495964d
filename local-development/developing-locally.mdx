@@ -1,0 +1,261 @@
+---
+title: "Run Cookiecutter Django locally without Docker"
+description: "Set up a bare-metal local development environment for Cookiecutter Django — install dependencies with uv, configure PostgreSQL, and start the dev server."
+---
+
+This guide walks you through running a Cookiecutter Django project directly on your machine — no Docker required. You will install dependencies with `uv`, create a local PostgreSQL database, and serve the application with Django's development server or `uvicorn`.
+
+## Prerequisites
+
+Before you begin, make sure the following are installed on your host machine:
+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — Python package and project manager
+- [PostgreSQL](https://www.postgresql.org/download/) — the primary database
+- [Redis](https://redis.io/download) — required only if you are using Celery
+- [Cookiecutter](https://github.com/cookiecutter/cookiecutter) — the project generator
+
+## Setting up your development environment
+
+<Steps>
+  <Step title="Generate the project">
+    Run Cookiecutter against the cookiecutter-django repository. You will be prompted to enter project options such as `project_slug`, author name, and which optional features to enable.
+
+    ```bash
+    uvx cookiecutter https://github.com/cookiecutter/cookiecutter-django
+    ```
+
+    For a full description of every available option, refer to the Project Generation Options reference.
+  </Step>
+
+  <Step title="Install development requirements">
+    Change into the project directory (using the `project_slug` you entered during setup), initialise the virtual environment, and install the pre-commit hooks.
+
+    ```bash
+    cd <project_slug>
+    uv sync
+    git init
+    uv run pre-commit install
+    ```
+
+    <Note>
+      The `pre-commit` hook is included in the generated project by default. See the [pre-commit documentation](https://pre-commit.com/) for details on what it checks.
+    </Note>
+  </Step>
+
+  <Step title="Create a PostgreSQL database">
+    Use [`createdb`](https://www.postgresql.org/docs/current/static/app-createdb.html) to create a new database. Replace `<project_slug>` with the slug you chose during setup.
+
+    ```bash
+    createdb --username=postgres <project_slug>
+    ```
+
+    <Note>
+      If this is the first database you have created on your machine, you may need to complete an [initial PostgreSQL setup](https://web.archive.org/web/20190303010033/http://suite.opengeo.org/docs/latest/dataadmin/pgGettingStarted/firstconnect.html) to allow local connections and set a password for the `postgres` user. The [PostgreSQL authentication documentation](https://www.postgresql.org/docs/current/static/auth-pg-hba-conf.html) explains the configuration file you need to modify.
+    </Note>
+  </Step>
+
+  <Step title="Set environment variables">
+    Export the database connection URL so Django can locate your database. Replace `<password>` and `<DB name given to createdb>` with your actual values.
+
+    ```bash
+    export DATABASE_URL=postgres://postgres:<password>@127.0.0.1:5432/<DB name given to createdb>
+    ```
+
+    <Note>
+      Refer to the Settings page for a full list of supported environment variables.
+    </Note>
+
+    <Tip>
+      To avoid re-exporting variables on every terminal session, you have two options:
+
+      - Create a `.env` file in the project root containing all variables, then set `DJANGO_READ_DOT_ENV_FILE=True` in your shell. Django will read the file automatically.
+      - Use a local environment manager such as [direnv](https://direnv.net/).
+    </Tip>
+  </Step>
+
+  <Step title="Apply migrations">
+    Run Django's migration command to create the required database schema.
+
+    ```bash
+    uv run python manage.py migrate
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    Start the application. Choose the synchronous or asynchronous variant depending on your setup.
+
+    **Synchronous (Django development server):**
+
+    ```bash
+    uv run python manage.py runserver 0.0.0.0:8000
+    ```
+
+    **Asynchronous (uvicorn):**
+
+    ```bash
+    uv run uvicorn config.asgi:application --host 0.0.0.0 --reload --reload-include '*.html'
+    ```
+
+    <Note>
+      If you opted for Webpack or Gulp as your frontend pipeline, see the [Using Webpack or Gulp](#using-webpack-or-gulp) section below instead of accessing port 8000 directly.
+    </Note>
+  </Step>
+</Steps>
+
+## Creating your first Django app
+
+After setting up your environment, you are ready to add your first app. This project follows the two-tier layout described in *Two Scoops of Django*:
+
+- **Top-level repository root** — configuration files, documentation, `manage.py`, and other project-wide files.
+- **Second-level Django project root** — where your Django apps live.
+- **Second-level configuration root** — settings modules and URL configuration.
+
+The generated layout looks like this:
+
+```text
+<repository_root>/
+├── config/
+│   ├── settings/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── local.py
+│   │   └── production.py
+│   ├── urls.py
+│   └── wsgi.py
+├── <django_project_root>/
+│   ├── <name_of_the_app>/
+│   │   ├── migrations/
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── tests.py
+│   │   └── views.py
+│   ├── __init__.py
+│   └── ...
+├── pyproject.toml
+├── uv.lock
+├── manage.py
+├── README.md
+└── ...
+```
+
+To add a new app, follow these steps:
+
+1. **Create the app** using Django's `startapp` command. Replace `<name-of-the-app>` with your desired app name:
+
+   ```bash
+   uv run python manage.py startapp <name-of-the-app>
+   ```
+
+2. **Move the app** into the Django project root to maintain the two-tier structure:
+
+   ```bash
+   mv <name-of-the-app> <django_project_root>/
+   ```
+
+3. **Edit `apps.py`** — change `name = '<name-of-the-app>'` to `name = '<django_project_root>.<name-of-the-app>'`.
+
+4. **Register the app** by adding it to the `LOCAL_APPS` list in `config/settings/base.py`.
+
+## Setting up the email backend
+
+### Mailpit
+
+<Note>
+  Mailpit is available only if you bootstrapped the project with `use_mailpit` set to `y`.
+</Note>
+
+[Mailpit](https://github.com/axllent/mailpit) is a local mail-testing tool written in Go with no external dependencies. Packages such as `django-allauth` send verification emails during development, and Mailpit captures them so you can inspect them in a browser.
+
+1. [Download the latest Mailpit release](https://github.com/axllent/mailpit) for your operating system.
+2. Copy the binary into the project root.
+3. Make it executable:
+
+   ```bash
+   chmod +x mailpit
+   ```
+
+4. Open a second terminal window and start Mailpit:
+
+   ```bash
+   ./mailpit
+   ```
+
+5. Open [http://127.0.0.1:8025/](http://127.0.0.1:8025/) to view captured emails.
+
+### Console backend
+
+<Note>
+  If you generated the project with `use_mailpit` set to `n`, the console backend is configured by default.
+</Note>
+
+To deliver emails to the terminal instead, set the following in your environment or settings:
+
+```python
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+```
+
+In production, [Mailgun](https://www.mailgun.com/) is configured automatically by the generated project.
+
+## Celery
+
+If the project is configured to use Celery, tasks run on the main thread by default during local development (no broker needed). To use a real broker locally, first set the following in `config/settings/local.py`:
+
+```python
+CELERY_TASK_ALWAYS_EAGER = False
+```
+
+Then start Redis in one terminal (see the [Getting started with Redis](https://redis.io/docs/latest/get-started/) guide if you haven't installed it yet):
+
+```bash
+redis-server
+```
+
+Start the Celery worker in a second terminal:
+
+```bash
+uv run celery -A config.celery_app worker --loglevel=info
+```
+
+Keep the worker running in the background whenever your app is running so that it can pick up queued tasks. See the [Celery Workers Guide](https://docs.celeryq.dev/en/stable/userguide/workers.html) for more detail.
+
+The generated project includes a simple task for manual testing in `<project_slug>/users/tasks.py`. To queue it locally, open the Django shell:
+
+```bash
+uv run python manage.py shell
+```
+
+Then import and call the task:
+
+```python
+from <project_slug>.users.tasks import get_users_count
+get_users_count.delay()
+```
+
+You can also schedule and manage tasks through Django admin using [django-celery-beat](https://django-celery-beat.readthedocs.io/en/latest/).
+
+## Using Webpack or Gulp
+
+If you opted for Gulp or Webpack as your frontend pipeline, the project comes configured with [Sass](https://sass-lang.com/) compilation and [live reloading](https://browsersync.io). As you edit Sass or JavaScript source files, the task runner automatically rebuilds assets and reloads them in your browser without a full page refresh.
+
+1. Make sure [Node.js](http://nodejs.org/download/) v18 is installed on your machine.
+
+2. Install JavaScript dependencies from the project root:
+
+   ```bash
+   npm install
+   ```
+
+3. Start the application with your virtual environment activated:
+
+   ```bash
+   npm run dev
+   ```
+
+   This starts two processes in parallel: the static asset build loop and the Django development server.
+
+4. Access your application at **http://localhost:3000** (the default port served by the node process).
+
+<Warning>
+  Do not access the application using the Django port (8000 by default). Doing so will result in broken styles and 404 errors when loading static assets.
+</Warning>

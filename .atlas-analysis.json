@@ -1,0 +1,86 @@
+{
+  "projectType": "framework",
+  "projectName": "Cookiecutter Django",
+  "projectDescription": "A Cookiecutter template that generates production-ready Django projects with configurable integrations for Docker, Celery, cloud storage, CI tools, and more.",
+  "theme": "palm",
+  "primaryColor": "#5d6c75",
+  "lightColor": "#b5bec1",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "project-generation-options"
+            ]
+          },
+          {
+            "group": "Local Development",
+            "pages": [
+              "local-development/developing-locally",
+              "local-development/developing-locally-docker"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/deployment-with-docker",
+              "deployment/deployment-on-heroku",
+              "deployment/deployment-on-pythonanywhere"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/settings",
+              "guides/testing",
+              "guides/linters",
+              "guides/websocket",
+              "guides/docker-postgres-backups"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "help/troubleshooting",
+              "help/faq"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Production-ready Django project scaffold with 100% starting test coverage",
+    "Docker and Docker Compose support for local and production environments",
+    "Configurable cloud storage (AWS S3, GCP, Azure) for static and media files",
+    "Optional Celery + Flower task queue integration",
+    "Multiple email service backends via django-anymail (Mailgun, SendGrid, SES, etc.)",
+    "REST API support with Django REST Framework or Django Ninja",
+    "Frontend pipeline options: Webpack, Gulp, or Django Compressor",
+    "Optional Sentry error tracking integration",
+    "12-Factor App settings via django-environ",
+    "Custom user model with django-allauth (username or email-based auth)",
+    "CI/CD configuration for GitHub Actions, GitLab CI, Travis, and Drone",
+    "Heroku and PythonAnywhere deployment support",
+    "Pre-commit hooks for code quality"
+  ],
+  "publicApiSurface": [
+    "cookiecutter.json template variables: project_name, project_slug, description, author_name, domain_name, email, version",
+    "cookiecutter.json options: use_docker, use_celery, use_sentry, use_whitenoise, use_heroku, use_mailpit, use_async",
+    "cookiecutter.json choices: cloud_provider (AWS/GCP/Azure/None), mail_service, rest_api (None/DRF/Django Ninja), frontend_pipeline, ci_tool, postgresql_version",
+    "hooks/pre_gen_project.py: input validation",
+    "hooks/post_gen_project.py: post-generation cleanup and secret generation",
+    "Environment variables: DATABASE_URL, DJANGO_SECRET_KEY, DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, DJANGO_ADMIN_URL",
+    "Environment variables: DJANGO_AWS_ACCESS_KEY_ID, DJANGO_GCP_STORAGE_BUCKET_NAME, DJANGO_AZURE_ACCOUNT_NAME",
+    "Environment variables: MAILGUN_API_KEY, SENDGRID_API_KEY, SENTRY_DSN, CELERY_FLOWER_USER/PASSWORD",
+    "Generated project: config/settings/base.py, local.py, test.py, production.py",
+    "Generated project: config/urls.py, config/wsgi.py, config/asgi.py",
+    "Generated project: <project_slug>/users/ (custom user model, tasks, views)"
+  ]
+}

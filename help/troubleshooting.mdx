@@ -1,0 +1,209 @@
+---
+title: 'Troubleshooting common Cookiecutter Django issues'
+description: 'Solutions to common errors encountered during development with Cookiecutter Django, from email configuration to Docker volume conflicts.'
+---
+
+This page covers errors and problems commonly encountered when developing with Cookiecutter Django. Each section describes the cause of the issue and the steps needed to resolve it.
+
+<AccordionGroup>
+  <Accordion title="500 error on sign-up or login">
+    A 500 Internal Server Error on the sign-up or login page almost always means your mail backend is not configured correctly.
+
+    By default, `django-allauth` is set up to require mandatory email verification. This means it sends a verification email when an unverified user tries to log in, or when someone tries to sign up. If the email backend cannot deliver that message, Django raises an unhandled error.
+
+    **Why it happens with Mailgun**
+
+    Mailgun accounts start in sandbox mode. In sandbox mode, you can only send email to addresses you have explicitly added as authorized recipients. If you try to send to any other address, delivery fails and Django raises a 500 error.
+
+    **How to fix it**
+
+    Choose one of the following options:
+
+    - Add your email address to the list of authorized recipients in your Mailgun sandbox settings.
+    - Verify your Mailgun domain so that the sandbox restriction is lifted.
+    - Configure a different email backend for local development, such as the console backend.
+
+    Set the following environment variables with your Mailgun credentials:
+
+    ```bash
+    MAILGUN_API_KEY=your-mailgun-api-key
+    MAILGUN_DOMAIN=your-sender-domain.mailgun.org
+    ```
+
+    For local development without a real mail service, you can use Django's console email backend by setting:
+
+    ```bash
+    EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+    ```
+
+    <Note>
+      The console backend prints emails to stdout instead of sending them. It is only suitable for local development.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Docker: Postgres authentication failed">
+    If you see log output like the following, your Postgres container is using credentials from a previous project generation:
+
+    ```
+    postgres_1  | 2018-06-07 19:11:23.963 UTC [81] FATAL:  password authentication failed for user "pydanny"
+    postgres_1  | 2018-06-07 19:11:23.963 UTC [81] DETAIL:  Password does not match for user "pydanny".
+    postgres_1  | 	Connection matched pg_hba.conf line 95: "host all all all md5"
+    ```
+
+    **Why it happens**
+
+    When you regenerate a project using the same name, Docker preserves the named volumes from the previous run. Here is the sequence of events that causes the mismatch:
+
+    1. You generate the project for the first time. The `.env` file is populated with a randomly generated password.
+    2. You run `docker compose` and the Postgres container initializes the database using those credentials.
+    3. You regenerate the project with the same name. The `.env` file is now populated with a **new** random password.
+    4. You run `docker compose` again. Because the container names are the same, Docker reuses the existing volume instead of re-running the Dockerfile. The old database password no longer matches the new `.env` file, and authentication fails.
+
+    **How to fix it**
+
+    Remove the old Docker volumes for this project:
+
+    ```bash
+    docker compose -f docker-compose.local.yml down --volumes --rmi all
+    ```
+
+    Alternatively, use the Docker volume sub-commands to find and remove specific volumes:
+
+    ```bash
+    # List all volumes
+    docker volume ls
+
+    # Remove a specific volume
+    docker volume rm <volume-name>
+    ```
+
+    To remove all unused volumes system-wide (use with care — this affects all Docker projects on your machine):
+
+    ```bash
+    docker system prune --volumes
+    ```
+  </Accordion>
+
+  <Accordion title="Variable is not set. Defaulting to a blank string">
+    If you see warnings like the following when starting Docker Compose:
+
+    ```
+    WARN[0000] The "DJANGO_AWS_STORAGE_BUCKET_NAME" variable is not set. Defaulting to a blank string.
+    WARN[0000] The "DJANGO_AWS_S3_CUSTOM_DOMAIN" variable is not set. Defaulting to a blank string.
+    ```
+
+    **Why it happens**
+
+    This is a known limitation of the Docker + Webpack combination when Whitenoise is **not** selected as your static files backend. Docker Compose reads all variable references in the Compose file at startup, including those for cloud storage settings that are not required in your current configuration. Because these variables are absent from your `.env` file, Docker Compose warns that they default to empty strings.
+
+    **How to fix it**
+
+    Add the missing variables to your `.env` file with empty values to silence the warnings, or refer to the deployment guide for the full static file configuration required for your chosen storage backend.
+
+    <Note>
+      These warnings do not prevent the containers from starting. They are cosmetic unless your application actually requires those variables at runtime.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Invalid project_slug">
+    The `project_slug` value must be a valid Python module name. Cookiecutter Django uses this value as the top-level Python package name for your project, so Python must be able to import it.
+
+    **Rules for a valid `project_slug`:**
+
+    - Only lowercase letters, digits, and underscores
+    - No hyphens (`-`) — Python cannot import a module with a hyphen in its name
+    - No spaces
+    - Must not start with a digit
+
+    **Examples**
+
+    | Value | Valid? |
+    |---|---|
+    | `my_project` | Yes |
+    | `myproject` | Yes |
+    | `my-project` | No — contains a hyphen |
+    | `My Project` | No — contains a space and uppercase letters |
+    | `2cool` | No — starts with a digit |
+
+    If you use an invalid slug, you will encounter import errors when Django tries to load your application modules.
+  </Accordion>
+
+  <Accordion title="Jinja2 TemplateSyntaxError: unknown tag 'now'">
+    If project generation fails with:
+
+    ```
+    jinja2.exceptions.TemplateSyntaxError: Encountered unknown tag 'now'.
+    ```
+
+    **Why it happens**
+
+    Older versions of Cookiecutter do not support the `now` tag used in some template files.
+
+    **How to fix it**
+
+    Upgrade Cookiecutter to version 1.4 or higher:
+
+    ```bash
+    pip install --upgrade "cookiecutter>=1.4"
+    ```
+
+    See [issue #528](https://github.com/cookiecutter/cookiecutter-django/issues/528#issuecomment-212650373) for more context.
+  </Accordion>
+
+  <Accordion title="New apps not created in the project root">
+    When you run `django-admin startapp myapp` or `python manage.py startapp myapp`, the new app directory is created in whichever directory you run the command from — not necessarily inside your Django project package.
+
+    **Why it happens**
+
+    Cookiecutter Django does not change the default behavior of `django-admin startapp`. Django places new apps wherever the command is run.
+
+    **How to fix it**
+
+    Move the newly created app directory into your Django project root manually:
+
+    ```bash
+    python manage.py startapp myapp
+    mv myapp <project_slug>/myapp
+    ```
+
+    Then update the app's `AppConfig.name` in `myapp/apps.py` to use the full dotted path, for example `<project_slug>.myapp`.
+
+    See [issue #1725](https://github.com/cookiecutter/cookiecutter-django/issues/1725#issuecomment-407493176) for more context.
+  </Accordion>
+
+  <Accordion title="Static files not serving in production">
+    If your static files (CSS, JS, images) are not loading in production, the most common cause is that `collectstatic` has not been run or `STATIC_ROOT` is not correctly configured.
+
+    **Steps to diagnose:**
+
+    1. Confirm that `DEBUG` is set to `False` in your production settings.
+    2. Run `python manage.py collectstatic` to gather all static files into `STATIC_ROOT`.
+    3. Confirm your web server (nginx, Caddy, etc.) is configured to serve files from `STATIC_ROOT`.
+
+    If you are using Whitenoise, make sure it is added to `MIDDLEWARE` before any other middleware that might modify responses:
+
+    ```python
+    MIDDLEWARE = [
+        "django.middleware.security.SecurityMiddleware",
+        "whitenoise.middleware.WhiteNoiseMiddleware",
+        # ...
+    ]
+    ```
+  </Accordion>
+
+  <Accordion title="DisallowedHost error with DEBUG=False">
+    When `DEBUG` is set to `False`, Django enforces the `ALLOWED_HOSTS` setting. If your domain or IP is not listed, Django rejects the request with a 400 Bad Request error.
+
+    **How to fix it**
+
+    Add your domain and/or IP address to the `DJANGO_ALLOWED_HOSTS` environment variable. In production settings, this variable is read by `django-environ`:
+
+    ```bash
+    DJANGO_ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
+    ```
+
+    <Warning>
+      Never set `ALLOWED_HOSTS = ['*']` in production. Always list only the specific domains your application should respond to.
+    </Warning>
+  </Accordion>
+</AccordionGroup>

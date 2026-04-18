@@ -1,0 +1,290 @@
+---
+title: "Cookiecutter Django project generation options"
+description: "A complete reference for every template variable prompted by the Cookiecutter CLI when generating a new Cookiecutter Django project."
+---
+
+When you run `uvx cookiecutter https://github.com/cookiecutter/cookiecutter-django`, the Cookiecutter CLI prompts you to provide a value for each option below. Options with a list of choices display a numbered menu; options with a default show it in brackets. Press Enter to accept the default. Your answers are baked into the generated project — most can be changed later by editing the relevant files, but some affect which files are included at all.
+
+## Project identity
+
+### `project_name`
+
+**Default:** `My Awesome Project`
+
+Your project's human-readable name. Capitals and spaces are allowed. This value appears in places like `README`, page titles, and metadata.
+
+### `project_slug`
+
+**Default:** auto-derived from `project_name`
+
+A URL- and Python-safe identifier for your project. Spaces and hyphens are replaced with underscores and the value is lowercased automatically. Used as the Python package name and repository directory name. Must be a valid Python identifier.
+
+### `description`
+
+**Default:** `Behold My Awesome Project!`
+
+A short description of your project. Used in the generated `README` and other documentation scaffolding.
+
+### `author_name`
+
+**Default:** `Daniel Roy Greenfeld`
+
+Your name. Appears in the generated `LICENSE` file and other author fields.
+
+### `email`
+
+**Default:** auto-derived from `author_name` and `domain_name`
+
+The email address used to identify yourself in the project.
+
+### `domain_name`
+
+**Default:** `example.com`
+
+The domain name where your project will be hosted. Used in Django's `ALLOWED_HOSTS` and related settings. Can be changed later.
+
+### `version`
+
+**Default:** `0.1.0`
+
+The initial version string for the project.
+
+## Licensing
+
+### `open_source_license`
+
+**Choices:**
+
+| # | Value |
+|---|-------|
+| 1 | MIT |
+| 2 | BSD |
+| 3 | GPLv3 |
+| 4 | Apache Software License 2.0 |
+| 5 | Not open source |
+
+**Default:** `MIT`
+
+The software license for your project. Selecting `Not open source` removes the `LICENSE` and `CONTRIBUTORS.txt` files from the generated project. Selecting `GPLv3` includes a `COPYING` file; any other license removes it.
+
+## Authentication
+
+### `username_type`
+
+**Choices:** `username`, `email`
+
+**Default:** `username`
+
+Controls how users identify themselves when logging in.
+
+- `username` — Users log in with a username. An email field is still included on the user model.
+- `email` — Users log in with their email address. The username field is excluded.
+
+<Info>
+  It is best practice to always include an email field, so there is no option for a username-only setup.
+</Info>
+
+## Locale and platform
+
+### `timezone`
+
+**Default:** `UTC`
+
+The value used for Django's `TIME_ZONE` setting. Use any [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones), for example `America/New_York` or `Europe/London`.
+
+### `windows`
+
+**Default:** `n`
+
+Set to `y` if you are developing on Windows. Adjusts configuration files and tooling for Windows compatibility.
+
+## Editor
+
+### `editor`
+
+**Choices:** `None`, `PyCharm`, `VS Code`
+
+**Default:** `None`
+
+Generates editor-specific configuration files for your chosen editor.
+
+- `None` — No editor config is generated.
+- `PyCharm` — Generates a `.idea/` directory with PyCharm run configurations. If Docker is also enabled, Docker Compose run configurations are included.
+- `VS Code` — Generates `.vscode/` settings.
+
+## Infrastructure
+
+### `use_docker`
+
+**Default:** `n`
+
+Set to `y` to include Docker, Docker Compose, and devcontainer configuration. Enables:
+
+- `compose/` directory with local and production service definitions
+- `.devcontainer/` for VS Code remote container development
+- A `justfile` with common task shortcuts
+- Traefik reverse proxy in production with Let's Encrypt TLS
+
+If `use_docker` is `n`, all Docker-related files are removed from the generated project.
+
+### `postgresql_version`
+
+**Choices:** `18`, `17`, `16`, `15`, `14`
+
+**Default:** `18`
+
+Selects the PostgreSQL version to target. When using Docker, this sets the version of the `postgres` Docker image used in `docker-compose.local.yml`.
+
+### `cloud_provider`
+
+**Choices:** `AWS`, `GCP`, `Azure`, `None`
+
+**Default:** `AWS`
+
+Configures media and static file storage for production.
+
+| Choice | Storage backend |
+|--------|----------------|
+| `AWS` | Amazon S3 via `django-storages` |
+| `GCP` | Google Cloud Storage via `django-storages` |
+| `Azure` | Azure Blob Storage via `django-storages` |
+| `None` | No cloud storage; nginx serves media files when Docker is used |
+
+<Warning>
+  If you select `None` and do not enable Docker, media files will not be served in production. You must either select a cloud provider or enable WhiteNoise (for static files only) and Docker (for media files).
+</Warning>
+
+### `mail_service`
+
+**Choices:** `Mailgun`, `Amazon SES`, `Mailjet`, `Mandrill`, `Postmark`, `Sendgrid`, `Brevo`, `SparkPost`, `Other SMTP`
+
+**Default:** `Mailgun`
+
+Configures the transactional email backend using [django-anymail](https://github.com/anymail/django-anymail).
+
+<Note>
+  If you select `Amazon SES`, you must also select `AWS` as your cloud provider. The generator will exit with an error if these two options are mismatched.
+</Note>
+
+## API
+
+### `rest_api`
+
+**Choices:** `None`, `DRF`, `Django Ninja`
+
+**Default:** `None`
+
+Optionally scaffolds a REST API layer.
+
+- `None` — No API files are generated.
+- `DRF` — Adds [Django REST Framework](https://github.com/encode/django-rest-framework/) with a starter `api_router.py` and user serializer.
+- `Django Ninja` — Adds [Django Ninja](https://github.com/vitalik/django-ninja) with a starter `api.py` and user schema.
+
+## Async
+
+### `use_async`
+
+**Default:** `n`
+
+Set to `y` to enable ASGI support for WebSockets using Uvicorn + Gunicorn. Generates `config/asgi.py` and `config/websocket.py`.
+
+## Frontend
+
+### `frontend_pipeline`
+
+**Choices:** `None`, `Django Compressor`, `Gulp`, `Webpack`
+
+**Default:** `None`
+
+Configures the frontend asset build pipeline.
+
+| Choice | Description |
+|--------|-------------|
+| `None` | No build pipeline. Static files are served as-is. |
+| `Django Compressor` | Uses [Django Compressor](https://github.com/django-compressor/django-compressor) to compress and cache static files at request time. |
+| `Gulp` | Uses [Gulp](https://github.com/gulpjs/gulp) for asset compilation. Supports Bootstrap recompilation with real-time variable changes. |
+| `Webpack` | Uses [Webpack](https://webpack.js.org) for module bundling. Supports Bootstrap recompilation with real-time variable changes. |
+
+When `None` or `Django Compressor` is selected, Gulp and Webpack files, SASS files, and `package.json` are removed. When `Gulp` or `Webpack` is selected, the other runner's files are removed.
+
+## Background tasks
+
+### `use_celery`
+
+**Default:** `n`
+
+Set to `y` to configure [Celery](https://docs.celeryq.dev) for background task processing. Generates `config/celery_app.py` and example task files. When Docker is enabled, Celery worker and Flower monitoring services are added to the Compose configuration.
+
+## Local email testing
+
+### `use_mailpit`
+
+**Default:** `n`
+
+Set to `y` to configure [Mailpit](https://github.com/axllent/mailpit/) for local email testing. Mailpit intercepts outgoing emails in development so you can inspect them in a web UI without sending real messages.
+
+## Error tracking
+
+### `use_sentry`
+
+**Default:** `n`
+
+Set to `y` to configure [Sentry](https://sentry.io/welcome/) for error logging and performance monitoring in production.
+
+## Static files
+
+### `use_whitenoise`
+
+**Default:** `n`
+
+Set to `y` to configure [WhiteNoise](https://whitenoise.readthedocs.io/) for serving static files directly from Django, without a CDN or cloud storage bucket.
+
+<Note>
+  You must select either a cloud provider or enable WhiteNoise. The generator will exit with an error if both are set to `None`/`n`.
+</Note>
+
+## Deployment
+
+### `use_heroku`
+
+**Default:** `n`
+
+Set to `y` to include a `Procfile` and `bin/` scripts for deploying to [Heroku](https://github.com/heroku/heroku-buildpack-python).
+
+### `ci_tool`
+
+**Choices:** `None`, `Travis`, `Gitlab`, `Github`, `Drone`
+
+**Default:** `None`
+
+Generates CI/CD configuration for your chosen platform.
+
+| Choice | File generated |
+|--------|---------------|
+| `None` | No CI config |
+| `Travis` | `.travis.yml` |
+| `Gitlab` | `.gitlab-ci.yml` |
+| `Github` | `.github/` workflows directory |
+| `Drone` | `.drone.yml` |
+
+## Version control
+
+### `keep_local_envs_in_vcs`
+
+**Default:** `y`
+
+Controls whether `.envs/.local/` is committed to version control. Set to `y` when working in a team where reproducible local environments are important.
+
+<Note>
+  This option only has an effect when Docker Compose and/or Heroku support is enabled. If neither is enabled, `.env` files are not generated and this setting is informational only.
+</Note>
+
+## Development
+
+### `debug`
+
+**Default:** `n`
+
+<Warning>
+  This option is intended for Cookiecutter Django developers only. When set to `y`, secrets such as database passwords and Django secret keys are set to the literal string `debug` instead of randomly generated values, making the generated project easier to inspect and test. Do not use `y` for real projects.
+</Warning>

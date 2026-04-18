@@ -1,0 +1,320 @@
+---
+title: "Run Cookiecutter Django locally with Docker"
+description: "Set up a Docker Compose–based local development environment for Cookiecutter Django, including configuration, tips, and HTTPS setup."
+---
+
+This guide walks you through running a Cookiecutter Django project locally using Docker Compose. All services — Django, PostgreSQL, Redis, Celery, and optionally Mailpit — are orchestrated by a single Compose file so your environment is consistent and isolated from your host machine.
+
+<Note>
+  If you're new to Docker, be aware that some resources are cached system-wide and might reappear if you generate a project multiple times with the same name (for example, cached Postgres volumes from a previous run).
+</Note>
+
+## Prerequisites
+
+Before you begin, make sure the following are installed:
+
+- [Docker](https://docs.docker.com/install/) — container runtime
+- [Docker Compose](https://docs.docker.com/compose/install/) — multi-container orchestration
+- [pre-commit](https://pre-commit.com/#install) — Git hook manager
+- [Cookiecutter](https://github.com/cookiecutter/cookiecutter) — the project generator
+
+## Setting up your Docker environment
+
+<Steps>
+  <Step title="Generate the project">
+    Run Cookiecutter against the cookiecutter-django repository. You will be prompted to choose options such as `project_slug`, whether to use Celery, and which frontend pipeline to use.
+
+    ```bash
+    uvx cookiecutter https://github.com/cookiecutter/cookiecutter-django
+    ```
+
+    For a full description of every available option, refer to the Project Generation Options reference.
+  </Step>
+
+  <Step title="Build the stack">
+    Build the Docker images for your project. This may take several minutes the first time, as Docker needs to pull base images and install dependencies.
+
+    ```bash
+    docker compose -f docker-compose.local.yml build
+    ```
+
+    To emulate the production environment instead, substitute `docker-compose.production.yml` wherever you see `docker-compose.local.yml` throughout this guide.
+  </Step>
+
+  <Step title="Generate the dependency lockfile">
+    Docker cannot write to the host filesystem during an image build, so you need to generate the `uv` lockfile by running a temporary container after the initial build. This ensures reproducible dependency installs.
+
+    ```bash
+    docker compose -f docker-compose.local.yml run --rm django uv lock
+    ```
+
+    <Note>
+      You normally do not need to run this step again manually — `uv add <package_name>` updates the lockfile automatically. Rebuild is required only when you make manual edits to `pyproject.toml`.
+    </Note>
+  </Step>
+
+  <Step title="Rebuild the image">
+    Now that the lockfile exists on disk, rebuild the image so the locked dependencies are baked in.
+
+    ```bash
+    docker compose -f docker-compose.local.yml build
+    ```
+  </Step>
+
+  <Step title="Run the stack">
+    Bring up all services. The first run may take a moment while PostgreSQL initialises, but subsequent starts are fast.
+
+    ```bash
+    docker compose -f docker-compose.local.yml up
+    ```
+
+    The site is accessible at **http://localhost:3000** if you selected Webpack or Gulp as the frontend pipeline, or **http://localhost:8000** otherwise.
+
+    To run in detached (background) mode:
+
+    ```bash
+    docker compose -f docker-compose.local.yml up -d
+    ```
+
+    You can also export `COMPOSE_FILE` to avoid repeating the `-f` flag:
+
+    ```bash
+    export COMPOSE_FILE=docker-compose.local.yml
+    docker compose up
+    ```
+
+    To run the documentation service alongside local services:
+
+    ```bash
+    docker compose -f docker-compose.local.yml -f docker-compose.docs.yml up
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Before your first `git commit`, install the pre-commit hooks on your local machine:
+
+  ```bash
+  git init
+  pre-commit install
+  ```
+
+  Skipping this step leads to CI and linter failures that pre-commit would have caught locally.
+</Note>
+
+## Execute management commands
+
+Run any Django management command inside the `django` service container using `docker compose run --rm`:
+
+```bash
+docker compose -f docker-compose.local.yml run --rm django python manage.py migrate
+docker compose -f docker-compose.local.yml run --rm django python manage.py createsuperuser
+```
+
+`django` is the target service name defined in `docker-compose.local.yml`. Note that `docker exec` does not work reliably for management commands — always use `docker compose run --rm`.
+
+## Configuring the environment
+
+Environment variables are stored in the `.envs/` directory tree rather than a single `.env` file. Here is the structure generated for you:
+
+```text
+.envs
+├── .local
+│   ├── .django
+│   └── .postgres
+└── .production
+    ├── .django
+    └── .postgres
+```
+
+Each service that requires configuration gets its own file named after the service inside the appropriate environment directory. For example, the `postgres` service in the `local` environment reads from `.envs/.local/.postgres`.
+
+The `docker-compose.local.yml` wires this up via the `env_file` key:
+
+```yaml
+postgres:
+  build:
+    context: .
+    dockerfile: ./compose/production/postgres/Dockerfile
+  volumes:
+    - local_postgres_data:/var/lib/postgresql/data
+    - local_postgres_data_backups:/backups
+  env_file:
+    - ./.envs/.local/.postgres
+```
+
+A generated `.envs/.local/.postgres` file looks like this:
+
+```bash
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_DB=<your project slug>
+POSTGRES_USER=XgOWtQtJecsAbaIyslwGvFvPawftNaqO
+POSTGRES_PASSWORD=jSljDz4whHuwO3aJIgVBrqEml5Ycbghorep4uVJ4xjDYQu0LfuTZdctj7y0YcCLu
+```
+
+`POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` are all generated automatically during project setup.
+
+If you ever need to merge all production env files into a single `.env` file, run:
+
+```bash
+python merge_production_dotenvs_in_dotenv.py
+```
+
+## Tips & tricks
+
+<AccordionGroup>
+  <Accordion title="Activate a Docker Machine">
+    Use `eval` to point all subsequent Docker commands at a specific machine. This lets you switch between machines as needed.
+
+    ```bash
+    eval "$(docker-machine env dev1)"
+    ```
+  </Accordion>
+
+  <Accordion title="Add third-party Python packages">
+    Do not use `uv add <package_name>` directly in a running container — the container is ephemeral and changes will be lost when it is replaced. Instead, modify `pyproject.toml` and add the package to either `project.dependencies` or `tool.uv.dev-dependencies`:
+
+    ```toml
+    "<package_name>==<package_version>"
+    ```
+
+    Then rebuild the image and restart the stack:
+
+    ```bash
+    docker compose -f docker-compose.local.yml build
+    docker compose -f docker-compose.local.yml up
+    ```
+  </Accordion>
+
+  <Accordion title="Debugging with ipdb">
+    If you use `ipdb` for interactive debugging:
+
+    ```python
+    import ipdb; ipdb.set_trace()
+    ```
+
+    Run the container with `--service-ports` so that the debugger can attach to your terminal:
+
+    ```bash
+    docker compose -f docker-compose.local.yml run --rm --service-ports django
+    ```
+  </Accordion>
+
+  <Accordion title="Debugging with django-debug-toolbar">
+    For `django-debug-toolbar` to render correctly inside Docker, you need to tell Django the IP address of your Docker host. Add it to `INTERNAL_IPS` in `config/settings/local.py`:
+
+    ```python
+    INTERNAL_IPS = ["<your Docker Machine IP>"]
+    ```
+
+    You can also use `container_name` values from the Compose file with standard Docker commands:
+
+    ```bash
+    docker logs <project_slug>_local_celeryworker
+    docker top <project_slug>_local_celeryworker
+    ```
+  </Accordion>
+
+  <Accordion title="Mailpit email testing">
+    When `use_mailpit` was set to `y` during setup, a Mailpit container is included in the local stack.
+
+    1. Make sure the `<project_slug>_local_mailpit` container is running.
+    2. Open [http://127.0.0.1:8025](http://127.0.0.1:8025) to view captured emails.
+  </Accordion>
+
+  <Accordion title="Celery tasks in local development">
+    When not using Docker, Celery tasks run in Eager mode by default (no broker required). With Docker, the full task scheduler is used by default.
+
+    If you need tasks to execute on the main thread during development — for example, when profiling with Django Debug Toolbar — set the following in `config/settings/local.py`:
+
+    ```python
+    CELERY_TASK_ALWAYS_EAGER = True
+    ```
+  </Accordion>
+
+  <Accordion title="Celery Flower monitoring">
+    [Flower](https://github.com/mher/flower) is a real-time web monitor for Celery task queues. It is enabled by default in both `docker-compose.local.yml` and `docker-compose.production.yml` via a `flower` service, provided:
+
+    - `use_docker` was set to `y` during project initialisation
+    - `use_celery` was set to `y` during project initialisation
+
+    Flower requires authentication credentials. Set `CELERY_FLOWER_USER` and `CELERY_FLOWER_PASSWORD` in the appropriate `.envs` file (`.envs/.local/.django` for local, `.envs/.production/.django` for production), then visit **http://localhost:5555**.
+  </Accordion>
+
+  <Accordion title="Using Webpack or Gulp">
+    If you opted for Gulp or Webpack as the frontend pipeline, the stack includes a dedicated `node` service that compiles [Sass](https://sass-lang.com/) assets, watches for changes, and proxies requests to Django with [live reloading](https://browsersync.io) scripts injected into responses.
+
+    Access the application at **http://localhost:3000** (the port served by the `node` service) rather than port 8000 to get correct styles and live reloading.
+  </Accordion>
+
+  <Accordion title="Using Just for Docker commands">
+    The project includes a `justfile` that wraps common Docker Compose commands for convenience. Install [Just](https://just.systems/man/en/packages.html) first, then use the following commands:
+
+    | Command | Description |
+    |---|---|
+    | `just build` | Build the Python image using the local Compose file |
+    | `just up` | Start containers in detached mode, remove orphans |
+    | `just down` | Stop running containers |
+    | `just prune [service]` | Stop and remove containers and their volumes |
+    | `just logs [service]` | Show container logs |
+    | `just manage <command>` | Run a Django management command inside the container |
+
+    <Warning>
+      Just does not reliably handle signals or forward them to subprocesses. Pressing `Ctrl+C` may only interrupt Just itself rather than the running containers. See [this GitHub issue](https://github.com/casey/just/issues/2473) for more information.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Developing locally with HTTPS
+
+Some OAuth providers (such as Facebook) require HTTPS redirect URLs, which means you need TLS in your local environment to test social authentication.
+
+### Nginx reverse proxy
+
+Add an `nginx-proxy` service to `docker-compose.local.yml` to terminate TLS and forward traffic to the appropriate container. Generate certificates with [mkcert](https://github.com/FiloSottile/mkcert/blob/master/README.md#supported-root-stores), place them in a `certs/` folder in the project root, and configure the proxy as follows:
+
+```yaml
+nginx-proxy:
+  image: jwilder/nginx-proxy:alpine
+  container_name: nginx-proxy
+  ports:
+    - "80:80"
+    - "443:443"
+  volumes:
+    - /var/run/docker.sock:/tmp/docker.sock:ro
+    - ./certs:/etc/nginx/certs
+  restart: always
+  depends_on:
+    - node
+  environment:
+    - VIRTUAL_HOST=my-dev-env.local
+    - VIRTUAL_PORT=3000
+```
+
+Then allow the local hostname in `config/settings/local.py`:
+
+```python
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "my-dev-env.local"]
+```
+
+### Webpack additional configuration
+
+If you are using Webpack, add the following to the `devServer` section of `webpack/dev.config.js` to enable WebSocket connections through the proxy:
+
+```javascript
+client: {
+  webSocketURL: 'auto://0.0.0.0:0/ws',
+},
+```
+
+Name your certificate files after your local hostname — for example, `my-dev-env.local.crt` and `my-dev-env.local.key` — and place them in the `certs/` directory.
+
+Rebuild and start the stack:
+
+```bash
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+Then navigate to `https://my-dev-env.local` in your browser. For a detailed walkthrough, see [this guide on Docker Compose local HTTPS](https://codewithhugo.com/docker-compose-local-https/) and the [Nginx HTTPS article](https://afroshok.com/cookiecutter-https).

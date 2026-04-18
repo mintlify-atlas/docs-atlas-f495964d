@@ -1,0 +1,46 @@
+---
+title: "Code quality with Ruff: linting and formatting"
+description: "Use Ruff, a fast Python linter and formatter written in Rust, to enforce code style and catch errors in your Cookiecutter Django project."
+---
+
+Cookiecutter Django uses [Ruff](https://docs.astral.sh/ruff/) for linting and code formatting. Written in Rust, Ruff consolidates the functionality of many Python quality tools — flake8, pylint, pyupgrade, black, isort, and more — into a single, extremely fast binary. It ships with two commands: `ruff check` (the linter) and `ruff format` (the formatter).
+
+## Running Ruff
+
+To check your code without making any changes, run both commands in check/diff mode:
+
+```bash
+ruff format --diff .
+ruff check .
+```
+
+`ruff format --diff` shows what formatting changes would be applied. `ruff check` reports all linting violations.
+
+## Fixing issues
+
+<Tip>
+  Commit your work before running Ruff in fix mode. This gives you a savepoint you can restore to if the automated fixes produce unexpected results — you can then amend the commit afterwards to avoid a double commit in your history.
+</Tip>
+
+To apply automatic fixes, run:
+
+```bash
+ruff format .
+ruff check --fix .
+```
+
+Ruff also supports a set of fixes that require more caution:
+
+```bash
+ruff check --fix --unsafe-fixes .
+```
+
+<Warning>
+  The `--unsafe-fixes` flag applies changes that could alter runtime behaviour. Review the diff carefully before committing any unsafe fixes.
+</Warning>
+
+## Configuration
+
+Ruff is configured in `pyproject.toml` under the `[tool.ruff]` section. The most important option is `tool.ruff.lint.select`, which controls which rule sets are active. For example, `DJ` enables the [flake8-django](https://docs.astral.sh/ruff/rules/#flake8-django-dj) rules.
+
+For the full list of available rule sets and individual rules, see the [Ruff rules reference](https://docs.astral.sh/ruff/rules/).

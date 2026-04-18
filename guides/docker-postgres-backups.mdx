@@ -1,0 +1,168 @@
+---
+title: "PostgreSQL backups and restore with Docker"
+description: "Create, view, copy, restore, and manage PostgreSQL database backups using Docker Compose commands in your Cookiecutter Django project."
+---
+
+Cookiecutter Django includes built-in backup and restore scripts for PostgreSQL when using Docker. These scripts run inside the `postgres` container and store backups in a `/backups` directory within that container. The examples below use `docker-compose.local.yml`, but you can substitute `docker-compose.production.yml` for any command when working against your production environment.
+
+## Prerequisites
+
+<Note>
+  These commands require that your project was generated with `use_docker=y` and that the stack is running. Start the postgres container with:
+
+  ```bash
+  docker compose -f docker-compose.local.yml up -d postgres
+  ```
+</Note>
+
+## Creating a backup
+
+Run the `backup` command inside the `postgres` container:
+
+```bash
+docker compose -f docker-compose.local.yml exec postgres backup
+```
+
+For a database named `my_project`, the output looks like this:
+
+```
+Backing up the 'my_project' database...
+SUCCESS: 'my_project' database backup 'backup_2018_03_13T09_05_07.sql.gz' has been created and placed in '/backups'.
+```
+
+The backup file is placed in `/backups` inside the `postgres` container.
+
+## Viewing backups
+
+List all existing backups:
+
+```bash
+docker compose -f docker-compose.local.yml exec postgres backups
+```
+
+Example output:
+
+```
+These are the backups you have got:
+total 24K
+-rw-r--r-- 1 root root 5.2K Mar 13 09:05 backup_2018_03_13T09_05_07.sql.gz
+-rw-r--r-- 1 root root 5.2K Mar 12 21:13 backup_2018_03_12T21_13_03.sql.gz
+-rw-r--r-- 1 root root 5.2K Mar 12 21:12 backup_2018_03_12T21_12_58.sql.gz
+```
+
+## Copying backups locally
+
+Use `docker cp` to copy backups from the container to your local machine. If you know the container ID (e.g. `9c5c3f055843`):
+
+```bash
+docker cp 9c5c3f055843:/backups ./backups
+```
+
+To copy a single backup file:
+
+```bash
+docker cp 9c5c3f055843:/backups/backup_2018_03_13T09_05_07.sql.gz .
+```
+
+To avoid looking up the container ID manually, use `docker compose ps -q` to resolve it dynamically:
+
+```bash
+docker cp $(docker compose -f docker-compose.local.yml ps -q postgres):/backups ./backups
+```
+
+## Restoring from a backup
+
+Pass the backup filename to the `restore` command:
+
+```bash
+docker compose -f docker-compose.local.yml exec postgres restore backup_2018_03_13T09_05_07.sql.gz
+```
+
+You will see output similar to:
+
+```
+Restoring the 'my_project' database from the '/backups/backup_2018_03_13T09_05_07.sql.gz' backup...
+INFO: Dropping the database...
+INFO: Creating a new database...
+INFO: Applying the backup to the new database...
+SET
+SET
+SET
+SET
+SET
+ set_config
+------------
+
+(1 row)
+
+SET
+# ...
+ALTER TABLE
+SUCCESS: The 'my_project' database has been restored from the '/backups/backup_2018_03_13T09_05_07.sql.gz' backup.
+```
+
+## Backup to Amazon S3
+
+Use the `awscli` service to upload all backups to S3 or download a specific backup:
+
+```bash
+docker compose -f docker-compose.production.yml run --rm awscli upload
+docker compose -f docker-compose.production.yml run --rm awscli download backup_2018_03_13T09_05_07.sql.gz
+```
+
+The `upload` command recursively uploads the entire `/backups` directory. The `download` command fetches a specific backup file using the default S3 environment variables configured in your production settings.
+
+## Removing a backup
+
+Use the `rmbackup` command to delete a specific backup from the `/backups` directory:
+
+```bash
+docker compose -f docker-compose.local.yml exec postgres rmbackup backup_2018_03_13T09_05_07.sql.gz
+```
+
+## Upgrading PostgreSQL
+
+Upgrading PostgreSQL requires stopping the stack, creating a backup, removing the old data volume, and rebuilding the container with the new version.
+
+<Steps>
+  <Step title="Stop the stack and start only postgres">
+    ```bash
+    docker compose -f docker-compose.local.yml down
+    docker compose -f docker-compose.local.yml up -d postgres
+    ```
+  </Step>
+  <Step title="Create a backup">
+    ```bash
+    docker compose -f docker-compose.local.yml run --rm postgres backup
+    ```
+  </Step>
+  <Step title="Stop all containers and remove the old data volume">
+    ```bash
+    docker compose -f docker-compose.local.yml down
+    docker volume rm my_project_postgres_data
+    ```
+
+    <Warning>
+      You must remove the old data volume before upgrading. Skipping this step can cause the new PostgreSQL container to fail with errors like `FATAL: database files are incompatible with server` or `could not translate host name "postgres" to address: Name or service not known`.
+    </Warning>
+  </Step>
+  <Step title="Update the PostgreSQL version in the Dockerfile">
+    Edit `compose/production/postgres/Dockerfile` (or the local equivalent) to reference the new PostgreSQL version.
+  </Step>
+  <Step title="Build and start the updated postgres container">
+    ```bash
+    docker compose -f docker-compose.local.yml build postgres
+    docker compose -f docker-compose.local.yml up -d postgres
+    ```
+  </Step>
+  <Step title="Restore from the backup">
+    ```bash
+    docker compose -f docker-compose.local.yml run --rm postgres restore backup_2018_03_13T09_05_07.sql.gz
+    ```
+  </Step>
+  <Step title="Start the full stack">
+    ```bash
+    docker compose -f docker-compose.local.yml up -d
+    ```
+  </Step>
+</Steps>

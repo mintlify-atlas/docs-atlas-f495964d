@@ -1,0 +1,124 @@
+---
+title: 'Frequently asked questions about Cookiecutter Django'
+description: 'Answers to common questions about Cookiecutter Django design decisions, supported databases, Python and Django versions, and how to extend the template.'
+---
+
+This page answers common questions about why Cookiecutter Django is structured the way it is, what is and is not supported, and how to extend the template for your own needs.
+
+<AccordionGroup>
+  <Accordion title="Why is there a django.contrib.sites directory in the generated project?">
+    The generated project includes a custom migration at `<project_slug>/contrib/sites/migrations/0003_set_site_domain_and_name.py`. This migration automatically sets the `domain` and `name` fields on the default `sites.Site` record using the values you provided for `domain_name` and `project_name` during project generation.
+
+    Without this migration, the `sites.Site` record defaults to `example.com`, and you would need to update it manually through the Django admin or a data migration every time you set up a new environment.
+
+    By automating this with a migration, the correct domain is applied as soon as you run `migrate` — no manual intervention required.
+  </Accordion>
+
+  <Accordion title="Why use split settings files instead of a single 12-Factor config file?">
+    Cookiecutter Django uses split settings files — `base.py`, `local.py`, `test.py`, and `production.py` — rather than a single `settings.py` file that reads everything from the environment.
+
+    Each file has a clear purpose:
+
+    | File | Purpose |
+    |---|---|
+    | `base.py` | Shared settings used in every environment |
+    | `local.py` | Developer-specific overrides; imports from `base.py` |
+    | `test.py` | Settings optimized for running the test suite |
+    | `production.py` | Hardened settings for deployed environments |
+
+    This structure makes it easy to see at a glance which settings apply where, and avoids accidental leakage of development-only settings into production.
+
+    Secrets and environment-specific values (database URLs, API keys, `SECRET_KEY`) are still read from the environment using `django-environ`, which is consistent with the 12-Factor App methodology. The split-file approach and 12-Factor configuration are not mutually exclusive.
+  </Accordion>
+
+  <Accordion title="Why doesn't the project layout match Two Scoops of Django exactly?">
+    You may notice that some elements of this project do not match what is described in [Two Scoops of Django 3.x](https://www.feldroy.com/two-scoops-of-django) (chapter 3 in particular).
+
+    Cookiecutter Django serves, among other things, as a test bed for trying out new ideas and concepts. Some experiments work out and become recommendations; others do not. The end result is that this project intentionally diverges from the book in places where new approaches have been explored or where practical experience has suggested a better default.
+
+    If a particular pattern here differs from what the book describes, that is deliberate — not an oversight.
+  </Accordion>
+
+  <Accordion title="Can I use MySQL instead of PostgreSQL?">
+    No. Cookiecutter Django officially supports only PostgreSQL. The generated project, its migrations, and several of its dependencies are written and tested with PostgreSQL in mind.
+
+    If you need MySQL support, a community-maintained fork is available:
+
+    [cookiecutter-django-mysql](https://github.com/mabdullahadeel/cookiecutter-django-mysql)
+
+    <Note>
+      The MySQL fork is not maintained by the Cookiecutter Django core team. Check its repository for current compatibility and maintenance status before using it in production.
+    </Note>
+  </Accordion>
+
+  <Accordion title="How do I add a new template option to Cookiecutter Django?">
+    Adding a new configurable option to the template requires changes in several places. Follow these steps:
+
+    <Steps>
+      <Step title="Add the variable to cookiecutter.json">
+        Define the new option and its default value (or list of choices) in `cookiecutter.json`:
+
+        ```json
+        {
+          "my_new_option": ["y", "n"]
+        }
+        ```
+      </Step>
+
+      <Step title="Add validation in the pre-generation hook (if needed)">
+        If the option has constraints — for example, it conflicts with another option — add validation logic to `hooks/pre_gen_project.py`:
+
+        ```python
+        if "{{ cookiecutter.my_new_option }}" == "y" and "{{ cookiecutter.conflicting_option }}" == "y":
+            sys.exit("my_new_option and conflicting_option cannot both be enabled.")
+        ```
+      </Step>
+
+      <Step title="Add cleanup logic in the post-generation hook">
+        If the option controls whether certain files are included, add removal logic to `hooks/post_gen_project.py`:
+
+        ```python
+        if context["cookiecutter"]["my_new_option"] != "y":
+            remove_file("path/to/optional/file.py")
+        ```
+      </Step>
+
+      <Step title="Use Jinja2 conditionals in template files">
+        Inside template files under `{{cookiecutter.project_slug}}/`, use Jinja2 conditionals to include or exclude content based on the option:
+
+        ```python
+        {% if cookiecutter.my_new_option == 'y' %}
+        MY_SETTING = True
+        {% endif %}
+        ```
+      </Step>
+
+      <Step title="Add test combinations">
+        Add relevant combinations of your new option to `SUPPORTED_COMBINATIONS` in `tests/test_cookiecutter_generation.py` to ensure the template generates correctly with and without the option enabled.
+      </Step>
+    </Steps>
+  </Accordion>
+
+  <Accordion title="Where do I ask questions?">
+    Depending on the type of question, the following channels are available:
+
+    - **Stack Overflow** — Use the [`cookiecutter-django`](https://stackoverflow.com/questions/tagged/cookiecutter-django) tag for usage questions. This is the best place for questions that may help others.
+    - **GitHub Issues** — Open an issue at [github.com/cookiecutter/cookiecutter-django](https://github.com/cookiecutter/cookiecutter-django/issues) to report bugs or request new features. Before opening an issue, search existing issues to avoid duplicates.
+    - **Discord** — Join the community Discord server for general chat, quick questions, and discussion with other users and contributors.
+
+    <Tip>
+      When asking a question, include the version of Cookiecutter Django you are using, your Python and Django versions, and the relevant portion of your configuration or error output. This helps others give you a useful answer faster.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="What Python and Django versions are supported?">
+    Cookiecutter Django currently targets:
+
+    | Component | Version |
+    |---|---|
+    | Python | 3.14 |
+    | Django | 6.0 |
+
+    The project uses [calendar versioning](https://calver.org/) (`YYYY.MM.DD`). Refer to the [changelog](https://github.com/cookiecutter/cookiecutter-django/blob/main/CHANGELOG.md) and `cookiecutter.json` for the exact dependency versions included in any given release.
+  </Accordion>
+</AccordionGroup>

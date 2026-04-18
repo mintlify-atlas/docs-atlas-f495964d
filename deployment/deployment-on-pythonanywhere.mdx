@@ -1,0 +1,169 @@
+---
+title: Deploy Cookiecutter Django on PythonAnywhere
+description: Deploy your Cookiecutter Django project on PythonAnywhere using a WSGI setup — clone your repo, set environment variables, and configure PostgreSQL.
+---
+
+PythonAnywhere is a hosted Python environment that lets you run Django applications without managing a server. Unlike the Docker-based deployment, PythonAnywhere uses a traditional WSGI setup where you configure the web server through a browser-based dashboard. The workflow is a bit more hands-on for the initial setup, but subsequent deployments are as simple as a `git pull` and a page reload.
+
+## Overview
+
+<Steps>
+  <Step title="Clone your repo and install dependencies">
+    Pull your code down to PythonAnywhere using a Bash console and install dependencies with `uv`.
+  </Step>
+  <Step title="Set environment variables">
+    Configure your secrets and settings in a `.env` file.
+  </Step>
+  <Step title="Set up the database">
+    Create a PostgreSQL database and run migrations.
+  </Step>
+  <Step title="Configure Redis">
+    Point `REDIS_URL` at an external hosted Redis service.
+  </Step>
+  <Step title="Configure the Web tab">
+    Register your app in the PythonAnywhere Web tab and edit the WSGI configuration file.
+  </Step>
+</Steps>
+
+## Getting your code and dependencies on PythonAnywhere
+
+Make sure your project is fully committed and pushed to GitHub, GitLab, or another remote. Then log into your PythonAnywhere account, open a **Bash** console, clone your repo, and install dependencies:
+
+```bash
+git clone <my-repo-url>
+cd my-project-name
+uv sync --locked --no-dev  # may take a few minutes
+```
+
+## Setting environment variables
+
+Generate a secret key to use in the next step:
+
+```bash
+uv run python -c 'import secrets;import string; print("".join(secrets.choice(string.digits + string.ascii_letters + string.punctuation) for _ in range(50)))'
+```
+
+Make a note of it — you'll need it here and again when configuring the web app. Then open the `.env` file:
+
+```bash
+vi .env
+```
+
+<Note>
+  If you prefer not to use `vi`, you can also edit this file through the PythonAnywhere **Files** menu.
+</Note>
+
+Add the following environment variables:
+
+```bash
+WEB_CONCURRENCY=4
+DJANGO_SETTINGS_MODULE='config.settings.production'
+DJANGO_SECRET_KEY='<secret key goes here>'
+DJANGO_ALLOWED_HOSTS='<www.your-domain.com>'
+DJANGO_ADMIN_URL='<not admin/>'
+MAILGUN_API_KEY='<mailgun key>'
+MAILGUN_DOMAIN='<mailgun sender domain (e.g. mg.yourdomain.com)>'
+DJANGO_AWS_ACCESS_KEY_ID=
+DJANGO_AWS_SECRET_ACCESS_KEY=
+DJANGO_AWS_STORAGE_BUCKET_NAME=
+DATABASE_URL='<see Database setup section below>'
+REDIS_URL='<see Redis section below>'
+```
+
+<Note>
+  The AWS variables are not required if you are using Whitenoise or PythonAnywhere's built-in static file service, but you still need to define them (as blank values) so that the settings module does not raise an error.
+</Note>
+
+## Database setup
+
+Go to the PythonAnywhere **Databases tab** and configure PostgreSQL. Set a superuser password, then open a Postgres console and create your database:
+
+```sql
+CREATE DATABASE my-db-name;
+```
+
+You should also create a dedicated database role for your app rather than using the superuser credentials. Make a note of the server address and port.
+
+Back in your `.env` file, set the `DATABASE_URL`:
+
+```bash
+DATABASE_URL='postgres://<postgres-username>:<postgres-password>@<postgres-address>:<postgres-port>/<database-name>'
+```
+
+Now run migrations and collect static files:
+
+```bash
+export UV_ENV_FILE=.env
+export UV_NO_DEV=1
+uv run python manage.py migrate
+uv run python manage.py compress  # optional, if using django-compressor
+uv run python manage.py collectstatic
+# and, optionally
+uv run python manage.py createsuperuser
+```
+
+## Redis
+
+PythonAnywhere does not offer a built-in Redis service. Because the production configuration from Cookiecutter Django uses Redis for caching, you need to provision Redis separately.
+
+Sign up for a hosted Redis provider (such as [Redis Cloud](https://redis.com/)) and set `REDIS_URL` in your `.env` file to the connection URL they provide.
+
+## Configuring the Web tab
+
+Go to the PythonAnywhere **Web tab**, click **Add new web app**, choose **Manual Config**, and select **Python 3.13**.
+
+<Note>
+  At the time of writing, PythonAnywhere does not yet support Python 3.14. Python 3.13 works fine. If 3.14 becomes available, you can try it instead.
+</Note>
+
+<Note>
+  If you are using a custom domain (not a `*.pythonanywhere.com` subdomain), you need to set up a CNAME record with your domain registrar.
+</Note>
+
+Once you are on the web app config screen:
+
+1. Set the **path to your virtualenv**. It should look something like `/home/<your-username>/<your-project-directory>/.venv`.
+2. Click the **WSGI configuration file** link near the top of the page and edit it to look like this:
+
+```python
+import os
+import sys
+
+PROJECT_PATH = '/home/<your-username>/<your-project-directory>'
+if PROJECT_PATH not in sys.path:
+    sys.path.append(PROJECT_PATH)
+
+os.environ['DJANGO_SETTINGS_MODULE='] = 'config.settings.production'
+os.environ['DJANGO_READ_DOT_ENV_FILE'] = '1'
+
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()
+```
+
+Hit **Reload** on the Web tab, and your app should be live.
+
+<Note>
+  You may see security warnings until SSL certificates are in place. To suppress them temporarily, set `DJANGO_SECURE_SSL_REDIRECT` to blank. Follow [PythonAnywhere's HTTPS setup instructions](https://help.pythonanywhere.com/pages/HTTPSSetup) to enable SSL.
+</Note>
+
+## Optional: static files
+
+If you want PythonAnywhere to serve your static files directly rather than using Whitenoise or S3, configure a static files mapping on the Web tab. You need an entry that maps your `STATIC_URL` to the directory defined in `STATIC_ROOT`. See the [PythonAnywhere Django static files guide](https://help.pythonanywhere.com/pages/DjangoStaticFiles) for details.
+
+## Future deployments
+
+Once the initial setup is complete, deploying new versions is straightforward. In a Bash console:
+
+```bash
+cd project-directory
+git pull
+uv run python manage.py migrate
+uv run python manage.py compress  # optional, if using django-compressor
+uv run python manage.py collectstatic
+```
+
+Then go to the Web tab and hit **Reload**.
+
+<Tip>
+  For automated deployments, you can configure git-push based deployments on PythonAnywhere. See [this guide](https://blog.pythonanywhere.com/87/) for details.
+</Tip>

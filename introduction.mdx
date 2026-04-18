@@ -1,0 +1,84 @@
+---
+title: "Cookiecutter Django: Jump-start Django Projects"
+description: "Cookiecutter Django is a production-ready project template that scaffolds a fully configured Django application in minutes, with batteries included."
+---
+
+Cookiecutter Django is a framework for jumpstarting production-ready Django projects quickly. Powered by [Cookiecutter](https://github.com/cookiecutter/cookiecutter), it answers a series of prompts and generates a Django project wired up with sane defaults, security best practices, and your chosen integrations — so you can skip the boilerplate and start shipping features.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Django 6.0 + Python 3.14" icon="python">
+    Generated projects target Django 6.0 and Python 3.14, with 100% starting test coverage out of the box.
+  </Card>
+  <Card title="12-Factor settings" icon="sliders">
+    Settings follow the [12-Factor App](https://12factor.net) methodology via [django-environ](https://github.com/joke2k/django-environ), with separate base, local, test, and production configs.
+  </Card>
+  <Card title="Custom user model" icon="user">
+    Ships with a custom user model ready to go, with support for both username-based and email-based authentication via [django-allauth](https://github.com/pennersr/django-allauth).
+  </Card>
+  <Card title="Docker support" icon="docker">
+    Full Docker and Docker Compose setup for local development and production, including [Traefik](https://traefik.io/) with Let's Encrypt TLS support.
+  </Card>
+  <Card title="Bootstrap 5 + frontend pipelines" icon="palette">
+    Includes [Bootstrap](https://github.com/twbs/bootstrap) v5. Optionally configure Gulp, Webpack, or Django Compressor for static asset pipelines.
+  </Card>
+  <Card title="Media storage" icon="cloud">
+    Configurable media storage via Amazon S3, Google Cloud Storage, Azure Storage, or nginx — chosen during project generation.
+  </Card>
+  <Card title="Pre-commit integration" icon="shield-check">
+    Ships with [pre-commit](https://github.com/pre-commit/pre-commit) hooks configured to catch common issues before code review.
+  </Card>
+  <Card title="Heroku + PythonAnywhere" icon="server">
+    Includes a `Procfile` for Heroku deploys, and documented instructions for deploying to [PythonAnywhere](https://www.pythonanywhere.com/).
+  </Card>
+</CardGroup>
+
+## Optional integrations
+
+These features are opt-in and can be enabled during the initial project generation prompt.
+
+- **Celery + Flower** — Background task queue with Celery, and Flower for monitoring (Flower is available in the Docker setup).
+- **Mailpit** — Local email testing via [Mailpit](https://github.com/axllent/mailpit/).
+- **Sentry** — Error tracking and performance monitoring via [Sentry](https://sentry.io/welcome/).
+- **Whitenoise** — Serve static files directly from Django without a CDN or external service.
+- **REST API** — Add [Django REST Framework](https://github.com/encode/django-rest-framework/) or [Django Ninja](https://github.com/vitalik/django-ninja) scaffolding.
+- **Async support** — Optional ASGI setup with Uvicorn + Gunicorn for WebSocket support.
+
+## Constraints
+
+Cookiecutter Django makes deliberate, opinionated choices to keep generated projects maintainable and secure:
+
+- **PostgreSQL only.** Versions 14 through 18 are supported. A [MySQL fork](https://github.com/mabdullahadeel/cookiecutter-django-mysql) is available separately.
+- **Environment variables for configuration.** This approach is incompatible with Apache/mod_wsgi deployments.
+- **Only actively maintained third-party libraries** are included in the generated project.
+
+## Community
+
+Have a question or found a bug? Here's where to get help:
+
+<CardGroup cols={2}>
+  <Card title="Stack Overflow" icon="stack-overflow" href="http://stackoverflow.com/questions/tagged/cookiecutter-django">
+    Post questions under the `cookiecutter-django` tag. The maintainers check there regularly.
+  </Card>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/cookiecutter/cookiecutter-django/issues">
+    Report bugs or request features by opening an issue on GitHub.
+  </Card>
+  <Card title="Discord" icon="discord" href="https://discord.gg/uFXweDQc5a">
+    Chat with the community and maintainers on Discord.
+  </Card>
+  <Card title="OpenCollective" icon="heart" href="https://opencollective.com/cookiecutter-django">
+    Support the project financially via OpenCollective.
+  </Card>
+</CardGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Generate your first project with step-by-step instructions.
+  </Card>
+  <Card title="Local development" icon="laptop-code" href="/local-development/developing-locally">
+    Set up your local environment after generating a project.
+  </Card>
+</CardGroup>
